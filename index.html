@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0, minimum-scale=1.0">
-    <title>会说话的星空</title>
+    <title>诚挚邀请</title>
     <style>
         :root {
             --bg-deep: #0a0a14;
@@ -249,6 +249,74 @@
                 font-size: 16px;
             }
         }
+        /* 小玫瑰花容器 */
+        .rose-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 25;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+        }
+        .rose-popup.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        /* 小号的玫瑰花朵（复用之前玫瑰页面的部分CSS） */
+        .mini-rose {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            animation: miniFloat 3s ease-in-out infinite;
+        }
+        @keyframes miniFloat {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .mini-petal {
+            position: absolute;
+            border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
+            transform-origin: center 82%;
+            box-shadow: inset 0 -2px 4px rgba(0,0,0,0.2), 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .mini-center {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: radial-gradient(circle at 40% 40%, #6b1a2a, #3d0d16 80%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            box-shadow: 0 0 8px rgba(180,40,60,0.5);
+        }
+        .mini-rose-text {
+            font-size: 18px;
+            color: #ffe0d0;
+            margin-top: 20px;
+            line-height: 1.8;
+            letter-spacing: 0.04em;
+            text-shadow: 0 0 10px rgba(255,150,150,0.5);
+            padding: 0 10px;
+        }
+        .mini-close-btn {
+            display: inline-block;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,200,180,0.5);
+            color: #ffe0d0;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 <body>
@@ -269,6 +337,14 @@
     </div>
 
     <!-- 解锁提示 -->
+        <!-- 小玫瑰弹出层（第9颗星专用） -->
+    <div class="rose-popup" id="rosePopup">
+        <div class="mini-rose" id="miniRose">
+            <!-- 花瓣和花蕊由JS动态生成 -->
+        </div>
+        <div class="mini-rose-text" id="miniRoseText"></div>
+        <button class="mini-close-btn" id="closeRosePopup">收下啦 💛</button>
+    </div>
     <div class="unlock-hint" id="unlockHint">这颗星星还没准备好哦，先点亮其他星星吧</div>
 
     <script>
@@ -292,6 +368,7 @@
             let scatterTriggered = false;
             let pendingSwapId = null;   // 记录被“交换”的星星故事ID
             let star9 = null;
+            let rosePopupInitialized = false;
 
             // DOM元素
             const scene = document.getElementById('scene');
@@ -470,7 +547,8 @@
                 star9.addEventListener('click', function(e) {
                     e.stopPropagation();
                     if (!revealedStories.has(9)) {
-                        showStory(9);
+                        // 换成显示玫瑰花
+                        showRosePopup(stories[8].text);  // stories[8] 是第9个故事的文字
                         revealedStories.add(9);
                         createBurst(e.clientX, e.clientY);
                         hintEl.style.opacity = '0';
@@ -576,6 +654,65 @@
                     setTimeout(() => particle.remove(), 850);
                 }
             }
+
+            // 生成迷你玫瑰花瓣（复用之前玫瑰页面的配置）
+function initMiniRose() {
+    const miniRose = document.getElementById('miniRose');
+    const layerConfigs = [
+        { count: 7, width: 24, height: 38, gradient: ['#ffb3c6','#f4728a','#e85470'], distanceRatio: 0.38 },
+        { count: 7, width: 22, height: 34, gradient: ['#ff9db5','#f0627e','#e04862'], distanceRatio: 0.30 },
+        { count: 6, width: 20, height: 30, gradient: ['#ff859f','#e8506e','#d43c56'], distanceRatio: 0.23 },
+        { count: 5, width: 16, height: 24, gradient: ['#f8708a','#e0445e','#c83048'], distanceRatio: 0.17 },
+        { count: 5, width: 14, height: 20, gradient: ['#e85d78','#d03852','#b8253e'], distanceRatio: 0.11 },
+        { count: 4, width: 10, height: 14, gradient: ['#c43550','#a82038','#8a1028'], distanceRatio: 0.06 },
+    ];
+    const centerX = 60, centerY = 60; // 迷你花容器的一半
+    layerConfigs.forEach(config => {
+        const angleStep = 360 / config.count;
+        for (let i = 0; i < config.count; i++) {
+            const angleDeg = i * angleStep;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            const distance = config.distanceRatio * 55;
+            const petal = document.createElement('div');
+            petal.classList.add('mini-petal');
+            petal.style.width = config.width + 'px';
+            petal.style.height = config.height + 'px';
+            petal.style.background = `radial-gradient(ellipse at 50% 25%, ${config.gradient[0]}, ${config.gradient[1]}, ${config.gradient[2]})`;
+            petal.style.left = (centerX + Math.cos(angleRad) * distance - config.width/2) + 'px';
+            petal.style.top = (centerY + Math.sin(angleRad) * distance - config.height*0.75) + 'px';
+            petal.style.transform = `rotate(${angleDeg+90}deg)`;
+            miniRose.appendChild(petal);
+        }
+    });
+    // 花蕊已经在HTML中，无需再创建
+}
+
+            function showRosePopup(text) {
+                const popup = document.getElementById('rosePopup');
+                const textEl = document.getElementById('miniRoseText');
+                textEl.textContent = text;
+                if (!rosePopupInitialized) {
+                    initMiniRose();
+                    rosePopupInitialized = true;
+                }
+                popup.classList.add('show');
+            }
+
+            // 关闭玫瑰弹窗
+            document.getElementById('closeRosePopup').addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.getElementById('rosePopup').classList.remove('show');
+            });
+            // 点击弹窗外部也可关闭（但需注意不要影响其他点击）
+            document.addEventListener('click', function(e) {
+                const popup = document.getElementById('rosePopup');
+                if (popup.classList.contains('show') && !popup.contains(e.target)) {
+                    // 排除星星点击造成的冒泡
+                    if (!e.target.classList.contains('click-star')) {
+                        popup.classList.remove('show');
+                    }
+                }
+            });
 
             console.log('? 星空已就绪，等待点亮所有回忆……');
         })();
