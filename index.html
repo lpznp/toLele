@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, maximum-scale=1.0, minimum-scale=1.0">
+    <title>会说话的星空</title>
+    <style>
+        :root {
+            --bg-deep: #0a0a14;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'STHeiti', sans-serif;
+            background: radial-gradient(ellipse at 50% 30%, #1a1a3a 0%, #0a0a18 60%, #02020c 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: default;
+            position: relative;
+            touch-action: manipulation;
+        }
+
+        /* 背景星空闪烁层 */
+        .stars-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) ease-in-out infinite;
+            animation-delay: var(--delay);
+            opacity: 0;
+        }
+        @keyframes twinkle {
+            0%,
+            100% {
+                opacity: 0.2;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.9;
+                transform: scale(1.8);
+            }
+        }
+
+        /* 主场景容器 */
+        .scene {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* 可点击的星星 - 五角星形状 */
+        .click-star {
+            position: absolute;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.8s ease, box-shadow 0.3s ease;
+            animation: starFloat 3s ease-in-out infinite;
+            z-index: 2;
+            /* 五角星裁剪路径 */
+            clip-path: polygon(
+                50% 0%, 61% 35%, 98% 35%, 68% 57%,
+                79% 91%, 50% 70%, 21% 91%, 32% 57%,
+                2% 35%, 39% 35%
+            );
+            background: radial-gradient(ellipse at 35% 30%, #ffebc0, #f4b642, #d4891a);
+            box-shadow: 0 0 18px 4px rgba(255, 200, 100, 0.7);
+        }
+        /* 散开时停止浮动动画 */
+        .click-star.scattering {
+            animation: none;
+        }
+        .click-star.lit {
+            box-shadow: 0 0 35px 12px rgba(255, 180, 80, 0.9);
+            background: radial-gradient(ellipse at 35% 30%, #fff8e0, #fdd460, #e8a020);
+        }
+
+        /* 第9颗星（浮现专用） */
+        .click-star.star-9 {
+            background: radial-gradient(ellipse at 35% 30%, #6a6a7a, #3a3a48, #1f1f2e);
+            box-shadow: 0 0 12px 4px rgba(100, 100, 130, 0.4);
+            animation: none;
+            opacity: 0;
+            transform: scale(0);
+            transition: opacity 0.8s ease, transform 0.8s ease, box-shadow 0.8s ease;
+        }
+        .click-star.star-9.visible {
+            opacity: 1;
+            transform: scale(1);
+            background: radial-gradient(ellipse at 35% 30%, #ffebc0, #f4b642, #d4891a);
+            box-shadow: 0 0 30px 12px rgba(255, 200, 100, 0.9);
+            animation: starFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes starFloat {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* 提示文字 */
+        .hint {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 240, 200, 0.7);
+            font-size: 15px;
+            letter-spacing: 0.1em;
+            z-index: 3;
+            pointer-events: none;
+            text-align: center;
+            animation: fadeInOut 2s ease-in-out infinite;
+        }
+        @keyframes fadeInOut {
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        /* 故事卡片 */
+        .story-card {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(20, 10, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px 25px;
+            width: 80%;
+            max-width: 380px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 180, 100, 0.3);
+            z-index: 20;
+            color: #fce;
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            border: 1px solid rgba(255, 200, 150, 0.3);
+        }
+        .story-card.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .story-card .story-text {
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 25px;
+            color: #ffe0d0;
+            font-weight: 400;
+            letter-spacing: 0.04em;
+        }
+        .story-card .close-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 200, 180, 0.4);
+            color: #ffe0d0;
+            padding: 10px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            letter-spacing: 0.05em;
+        }
+        .story-card .close-btn:active {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* 粒子爆发 */
+        .burst-particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 30;
+            border-radius: 50%;
+            animation: burstOut 0.8s ease-out forwards;
+        }
+        @keyframes burstOut {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--bx), var(--by)) scale(0);
+            }
+        }
+
+        /* 解锁提示 */
+        .unlock-hint {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffe0b0;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 25;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            letter-spacing: 0.05em;
+        }
+        .unlock-hint.active {
+            opacity: 1;
+        }
+
+        /* 响应式 */
+        @media (max-width: 360px) {
+            .hint {
+                font-size: 13px;
+                bottom: 50px;
+            }
+            .story-card .story-text {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 背景静态星星（装饰） -->
+    <div class="stars-bg" id="bgStars"></div>
+
+    <!-- 可点击星星容器 -->
+    <div class="scene" id="scene"></div>
+
+    <!-- 底部提示 -->
+    <div class="hint" id="hint">? 点击星星，有悄悄话想对你说 ?</div>
+
+    <!-- 故事卡片 -->
+    <div class="story-card" id="storyCard">
+        <div class="story-text" id="storyText"></div>
+        <button class="close-btn" id="closeCard">知道了</button>
+    </div>
+
+    <!-- 解锁提示 -->
+    <div class="unlock-hint" id="unlockHint">这颗星星还没准备好哦，先点亮其他星星吧</div>
+
+    <script>
+        (function() {
+            // ---------- 星星故事数据 ----------
+            const stories = [
+                { id: 1, text: "初见那天，你走来的时候，安安静静的样子——就是说不出的可爱。" },
+                { id: 2, text: "电影院那次，我们偷偷聊着剧情，那种小声说话的感觉，莫名很舒服。" },
+                { id: 3, text: "在嫂子家，你话不多，但一点都不拘束，安安静静的样子很有气质。" },
+                { id: 4, text: "去文殊院那天，我又看到了另一个你——大大方方的，特别有魅力。" },
+                { id: 5, text: "地铁上人很多，我偷偷拉着你衣角，其实不是怕你摔倒，是怕你被人群挤远了。" },
+                { id: 6, text: "打游戏那次我是真没想到——本来想带你飞的，结果你带我躺赢了，深藏不露啊大佬。" },
+                { id: 7, text: "和你聊天的时候总觉得时间过得很快，你说的话不多，但每句都让人想听下去。" },
+                { id: 8, text: "其实有好几次，我发现我们挺像的——有些事不用说透，就能懂对方的意思。" },
+                { id: 9, text: "说了这么多，其实就一句：和你在一起，挺开心的。所以——什么时候有空，一起吃个晚饭吧，乐乐。" }
+            ];
+
+            // 状态变量
+            let firstStarShown = false;
+            const revealedStories = new Set();
+            let scatterTriggered = false;
+            let pendingSwapId = null;   // 记录被“交换”的星星故事ID
+            let star9 = null;
+
+            // DOM元素
+            const scene = document.getElementById('scene');
+            const storyCard = document.getElementById('storyCard');
+            const storyText = document.getElementById('storyText');
+            const closeCardBtn = document.getElementById('closeCard');
+            const hintEl = document.getElementById('hint');
+            const unlockHint = document.getElementById('unlockHint');
+
+            // ---------- 生成背景装饰星星 ----------
+            const bgStarsContainer = document.getElementById('bgStars');
+            for (let i = 0; i < 80; i++) {
+                const star = document.createElement('div');
+                star.classList.add('bg-star');
+                const size = 1 + Math.random() * 3;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.setProperty('--duration', (2 + Math.random() * 4) + 's');
+                star.style.setProperty('--delay', Math.random() * 5 + 's');
+                bgStarsContainer.appendChild(star);
+            }
+
+            // ---------- 生成8颗可点击星星（初始只创建前8个） ----------
+            const starElements = [];
+            const positions = [
+                { top: 12, left: 18, size: 50 },  // 星1
+                { top: 22, left: 68, size: 46 },  // 星2
+                { top: 38, left: 12, size: 44 },  // 星3
+                { top: 52, left: 78, size: 48 },  // 星4
+                { top: 28, left: 42, size: 42 },  // 星5
+                { top: 68, left: 28, size: 46 },  // 星6
+                { top: 62, left: 58, size: 44 },  // 星7
+                { top: 82, left: 72, size: 42 }   // 星8
+            ];
+
+            positions.forEach((pos, index) => {
+                const star = document.createElement('div');
+                star.classList.add('click-star');
+                star.style.width = pos.size + 'px';
+                star.style.height = pos.size + 'px';
+                star.style.top = pos.top + '%';
+                star.style.left = pos.left + '%';
+                star.dataset.index = index;
+                star.dataset.storyId = index + 1;
+                scene.appendChild(star);
+                starElements.push(star);
+
+                star.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    handleStarClick(index, star, e);
+                });
+            });
+
+            // ---------- 点击处理逻辑 ----------
+            function handleStarClick(index, starElement, event) {
+                const storyId = index + 1;
+
+                // 如果已经集齐8颗并散开，不再响应原有星星
+                if (scatterTriggered) return;
+
+                if (!firstStarShown) {
+                    firstStarShown = true;
+                    if (storyId !== 1) {
+                        // 点的是非星1，记录交换：把被点星星的故事挂起
+                        pendingSwapId = storyId;
+                        // 强行显示故事1
+                        showStory(1);
+                        revealedStories.add(1);
+                        createBurst(event.clientX, event.clientY);
+                        // 此时不点亮任何星星（因为被点的星星的故事还没显示）
+                    } else {
+                        // 直接点星星1，正常显示故事1，点亮星星1
+                        showStory(1);
+                        revealedStories.add(1);
+                        starElement.classList.add('lit');
+                        createBurst(event.clientX, event.clientY);
+                    }
+                    return;
+                }
+
+                // 如果存在挂起的交换，且当前点的是星星1
+                if (pendingSwapId && storyId === 1) {
+                    // 显示挂起的故事（即被点星星原本的故事）
+                    showStory(pendingSwapId);
+                    revealedStories.add(pendingSwapId);
+                    // 点亮星星1
+                    starElement.classList.add('lit');
+                    // 同时点亮被交换的那颗星（pendingSwapId - 1 是它的索引）
+                    const swappedStar = starElements[pendingSwapId - 1];
+                    if (swappedStar) swappedStar.classList.add('lit');
+                    createBurst(event.clientX, event.clientY);
+                    pendingSwapId = null;  // 清除交换状态
+                    // 检查集齐逻辑
+                    if (revealedStories.size >= 8 && !scatterTriggered) {
+                        triggerScatter();
+                    }
+                    return;
+                }
+
+                if (revealedStories.has(storyId)) {
+                    showTemporaryHint(starElement, '这个瞬间已经看过了~');
+                    return;
+                }
+
+                showStory(storyId);
+                revealedStories.add(storyId);
+                starElement.classList.add('lit');
+                createBurst(event.clientX, event.clientY);
+
+                // 检查是否所有故事1-8都已显示
+                if (revealedStories.size >= 8 && !scatterTriggered) {
+                    triggerScatter();
+                }
+
+                if (revealedStories.size >= 3) {
+                    hintEl.style.opacity = '0';
+                }
+            }
+
+            // 触发散开动画
+            function triggerScatter() {
+                scatterTriggered = true;
+                hintEl.textContent = '? 它们都在给你让路呢…… ?';
+                hintEl.style.opacity = '1';
+
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+
+                starElements.forEach(star => {
+                    const rect = star.getBoundingClientRect();
+                    const starCX = rect.left + rect.width / 2;
+                    const starCY = rect.top + rect.height / 2;
+                    const dx = starCX - centerX;
+                    const dy = starCY - centerY;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    // 向外移动 120px（可调）
+                    const shift = 120;
+                    const moveX = (dx / dist) * shift;
+                    const moveY = (dy / dist) * shift;
+
+                    star.classList.add('scattering');
+                    star.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                });
+
+                // 散开动画结束后（0.8s）浮现第9颗星
+                setTimeout(createStar9, 900);
+            }
+
+            // 创建第9颗星
+            function createStar9() {
+                // 移除旧的提示
+                hintEl.textContent = '? 咦，中间好像多了点什么…… ?';
+                hintEl.style.opacity = '1';
+
+                star9 = document.createElement('div');
+                star9.classList.add('click-star', 'star-9');
+                star9.style.width = '62px';
+                star9.style.height = '62px';
+                star9.style.top = '45%';
+                star9.style.left = '45%';
+                star9.style.marginLeft = '-31px';  // 微调居中
+                star9.style.marginTop = '-31px';
+                star9.dataset.storyId = 9;
+                scene.appendChild(star9);
+
+                // 下一帧启动浮现动画
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        star9.classList.add('visible');
+                    });
+                });
+
+                // 点击事件
+                star9.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!revealedStories.has(9)) {
+                        showStory(9);
+                        revealedStories.add(9);
+                        createBurst(e.clientX, e.clientY);
+                        hintEl.style.opacity = '0';
+                    }
+                });
+
+                // 几秒后自动淡化提示
+                setTimeout(() => {
+                    if (!revealedStories.has(9)) {
+                        hintEl.style.opacity = '0.5';
+                    }
+                }, 3000);
+            }
+
+            // 显示故事卡片
+            function showStory(storyId) {
+                const story = stories.find(s => s.id === storyId);
+                if (!story) return;
+                storyText.textContent = story.text;
+                storyCard.classList.add('show');
+            }
+
+            function closeStoryCard() {
+                storyCard.classList.remove('show');
+                
+                if (pendingStoryId) {
+                    const nextId = pendingStoryId;
+                    pendingStoryId = null;
+                    setTimeout(() => {
+                        showStory(nextId);
+                        revealedStories.add(nextId);
+                        // 点亮对应的星星（星星序号-1 = 数组下标）
+                        const idx = nextId - 1;
+                        if (idx < starElements.length) {
+                            starElements[idx].classList.add('lit');
+                        }
+                        // 检查是否集齐1-8颗
+                        if (revealedStories.size >= 8 && !scatterTriggered) {
+                            triggerScatter();
+                        }
+                    }, 300);
+                }
+            }
+
+            closeCardBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeStoryCard();
+            });
+
+            storyCard.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+            document.addEventListener('click', function(e) {
+                if (storyCard.classList.contains('show') && !storyCard.contains(e.target)) {
+                    closeStoryCard();
+                }
+            });
+
+            function showTemporaryHint(starElement, msg) {
+                const rect = starElement.getBoundingClientRect();
+                const hint = document.createElement('div');
+                hint.textContent = msg;
+                hint.style.position = 'fixed';
+                hint.style.left = rect.left + rect.width / 2 + 'px';
+                hint.style.top = rect.top - 35 + 'px';
+                hint.style.transform = 'translateX(-50%)';
+                hint.style.background = 'rgba(0,0,0,0.7)';
+                hint.style.color = '#ffe0b0';
+                hint.style.padding = '6px 14px';
+                hint.style.borderRadius = '16px';
+                hint.style.fontSize = '13px';
+                hint.style.zIndex = '25';
+                hint.style.pointerEvents = 'none';
+                hint.style.whiteSpace = 'nowrap';
+                document.body.appendChild(hint);
+                setTimeout(() => {
+                    hint.style.transition = 'opacity 0.4s';
+                    hint.style.opacity = '0';
+                    setTimeout(() => hint.remove(), 400);
+                }, 1200);
+            }
+
+            function createBurst(cx, cy) {
+                const count = 10 + Math.floor(Math.random() * 10);
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    particle.classList.add('burst-particle');
+                    const size = 2 + Math.random() * 6;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.left = cx + 'px';
+                    particle.style.top = cy + 'px';
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 20 + Math.random() * 70;
+                    const bx = Math.cos(angle) * dist;
+                    const by = Math.sin(angle) * dist;
+                    particle.style.setProperty('--bx', bx + 'px');
+                    particle.style.setProperty('--by', by + 'px');
+                    const hue = 35 + Math.random() * 30;
+                    particle.style.background = `hsl(${hue}, 90%, 70%)`;
+                    particle.style.boxShadow = `0 0 ${size}px rgba(255,200,100,0.8)`;
+                    document.body.appendChild(particle);
+                    setTimeout(() => particle.remove(), 850);
+                }
+            }
+
+            console.log('? 星空已就绪，等待点亮所有回忆……');
+        })();
+    </script>
+</body>
+</html>
